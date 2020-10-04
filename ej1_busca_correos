@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# PROGRAMACIÓN para DevOps
+# ------------------------
+
+# OBLIGATORIO 2020 SEGUNDO SEMESTRE
+# ---------------------------------
+# Grupo Nocturno
+# Profesores: Leonardo Genta y Eduardo Gomez
+
+# Ejercicio 1: Script en bash
+# ---------------------------
+
+# Script de forma:  ej1_busca_correos [-r] [-t] [-d dominio] Directorio
+# 
+# El script lista todos los correos electrónicos, mostrando un correo por línea, que se encuentran 
+# en los archivos regulares del directorio pasadocomo parámetro, sin importar si son o no ocultos. 
+# Además del listado de correos electrónicos encontrados,el script despliega de correos listados.
+
+
+
