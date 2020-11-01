@@ -1,0 +1,8 @@
+¿Hola, como estas?
+Te paso mi dirección de correo mycorreo@elcorreo.com.uy y por las dudas te paso también otro que
+tengo que es otro.correo@gcorreo.com.uk
+Y el archivo arch3.txt del subdirectorio dir2 tiene el texto:
+Los correos para guardar son: papa22@dt.com
+correo2@curso1.edu.uy
+Este no es un correo que funcione me parece pepe_@.papa.com
+Pero este si: alumno@gcorreo.com.uk

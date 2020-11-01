@@ -8,14 +8,189 @@
 # Grupo Nocturno
 # Profesores: Leonardo Genta y Eduardo Gomez
 
-# Ejercicio 1: Script en bash
+# EJERCICIO 1: SCRIPT DE BASH
 # ---------------------------
 
 # Script de forma:  ej1_busca_correos [-r] [-t] [-d dominio] Directorio
 # 
-# El script lista todos los correos electrónicos, mostrando un correo por línea, que se encuentran 
-# en los archivos regulares del directorio pasadocomo parámetro, sin importar si son o no ocultos. 
-# Además del listado de correos electrónicos encontrados,el script despliega de correos listados.
+# El script lista todos los correos electrónicos contenidos en los archivos regulares, ocultos o no, existentes en un directorio pasado como parámetro.
+# Además del listado de correos electrónicos encontrados,el script despliega la cantidad de correos listados.
+# La búsqueda se realiza de acuerdo a los modificadores -r, -t y -d dominio que son opcionales.
+
+# DEFINICION DE VARIABLES
+# -----------------------
+
+# La variable nivelRecursivo define la opción de recursividad para el comando find. 
+# Se define con el valor inicial -maxdepth 1 para que la búsqueda sea sólo en el directorio pasado como parámetro, o sea que la búsqueda no es recursiva.
+nivelRecursivo="-maxdepth 1"
+
+# La variable tipoArch define la opción de tipo de archivo para el comando find.
+# Se define con el valor -type f ya que la b+usqueda se debe realizar en archivos regulares.
+tipoArch="-type f"
+
+# La variable ocultos define la opción de nombre archivo para el comando find, definiendo si los archivos son ocultos o no.
+# Se define con el valor inicial "*", usando expansión de nombres, para definir archivos ocultos o no ocultos.
+ocultos="*"
+
+# La variable dominio corresponde al parámetro ingresado junto con el modificador -d.
+# Se define inicialmente como variable vacía.
+dominio=""
+
+# La variable buscarPorDominio establece si la búsqueda se realiza para un dominio determinado ingresado como parámetro o no.
+# Se define con el valor inicial no.
+buscarPorDominio="no"
+
+# PROCESAMIENTO DE MODIFICADORES
+# ------------------------------
+# Se utiliza getopts para procesar los modificadores recibidos, utilizando los modificadores aceptados -r, -t y -d (rtd).
+# Se antepone : a la cadena para que getopts no envíe mensajes de errores propios y tener mejor control de los mensajes de error a mostrar.
+# Se agrega : a la cadena para definir que el comando recibe argumento.
+
+while getopts ":rtd:" modificador
+do
+        case $modificador in
+                r) # Si -r está presente, la búsqueda de correos electrónicos se realiza en forma recursiva a partir del directorio ingresado como parámtero.
+		   # Se cambia el valor de la variable nivelRecursivo a "" para que no haya restricciones.
+	           nivelRecursivo=""
+        	;;
+                t) # Si -t está presente, significa que la búsqueda se realiza sólo en archivos regulares no ocultos con extensión .txt.
+	           # Se cambia el valor de la variable ocultos para contemplar archivos ocultos (siempre comienzan con .) y la extensión.
+		   # Se  utiliza también expansión de nombres.
+	           ocultos="[^.]*.txt"
+       		 ;;
+                d) # Si -d está presente, significa que la búsqueda se realiza para un dominio espec+ifico ingresado por parámetro.
+	           # Se carga el valor de la variable dominio con el valor de la variable de getopts $OPTARG.
+		   # Se cambia el valor de la variable buscarPorDominio a si.
+		   # Si no se ingresa el argumento del modificador, la cantidad de parámetros es incorrecta y el script termina con el mensaje correspondiente. 
+	           dominio=$OPTARG
+                   buscarPorDominio="si"
+        	;;
+                *) # Se testea si hay identificadores incorrectos que comiencen con -.
+		   # Si existen se despliega mensaje de error y se devuleve código de retorno 5.
+	           echo "Modificador "-$OPTARG" incorrecto, solo se acepta -r, -t y -d"
+                   exit 5
+        ;;
+        esac
+done
+
+# Se controla que la cantidad de parámetros sea la correcta.
+# En este punto, la cantidad de parámetros debe ser igual al índice definifo en la variable $OPTIND que indica el siguiente parámetros a procesar por getopts.
+# Si la cantidad de parámetros no coincide, se despliega mensaje de error y se devuelve código de retorno 4.
+# Si la cantidad de parámetros coincide, entonces el siguiente parámetro a procesar es el directorio a partir del cual se realiza la búsqueda.
+# Entonces se realiza un shift de $OPTIND -1 para que se consuman todos los modificadores y el directorio sea el parámetro $1.
+if [ $# -ne $OPTIND ]
+then
+        echo "Cantidad de parámetros incorrecta, solo se reciben los modificadores -r, -t, -d dominio y un directorio accesible en el sistema de archivos."
+        exit 4
+else
+        shift $((OPTIND-1))
+fi
+
+# PARÁMETRO DIRECTORIO INGRESADO
+# ------------------------------
+# Obtención del camino absoluto del directorio ingresado como parámetro (sea camino relativo o absoluto el ingresado).
+# Se utiliza el comando readlink que imprime la ruta absoluta de un enlace simbólico y además, también imprime la ruta absoluta de una ruta relativa.
+# Se carga la variable directorio con el camino absoluto obtenido.
+directorio=$(readlink -m "$1")
+
+
+# VERIFICACIONES AL PARÁMETRO DIRECTORIO
+# --------------------------------------
+
+# Se verifica que el directorio ingresado como parámetro exista.
+# En caso de que no exista, se despliega mensaje de error y se devuelve código de retorno 1.
+if ! [ -a "$directorio" ]
+then
+        echo "El directorio "$directorio" no existe." >&2
+        exit 1
+fi
+
+
+# Se verifica que el parámetro ingresado es un archivo.
+# En caso que no lo sea se despliega mensaje de error y se devuelve código de retorno 2.
+if ! [ -d "$directorio" ]
+then
+        echo "El parámetro "$directorio" no es un directorio" >&2
+        exit 2
+fi
+
+# Se verifica que los permisos de acceso al directorio testéandolos expícitamente (permisos de lectura y ejecución para posicionarse en el directorio).
+# En caso que no se pueda acceder al directorio se despliega mensaje de error y se devuelve código de retorno 3.
+if [ ! -r "$directorio" ] || [ ! -x "$directorio" ]
+then
+        echo "No se tienen los permisos necesarios para acceder al directorio "$directorio" y buscar correos." >&2
+        exit 3
+fi
+
+# EJECUCIÓN DE LA BÚSQUEDA DE CORREOS ELECTRÓNICOS
+# ------------------------------------------------
+
+# Archivos donde se realiza la búsqueda de correos.
+# -------------------------------------------------
+# La búsqueda de correos electrónicos se realiza en los archivos alojados en el directorio pasado por parámetro, con los modificadores correspondientes.
+# Para la búsqueda se utiliza el comando find.
+# Se carga la variable archivosDondeBuscar con el resultado de la búsqueda de todos los archivos correspondientes utilizando las variables definidas,
+# de acuerdo a las opciones ingresadas para la ejecución del script.
+
+archivosDondeBuscar=$(find "$directorio" $nivelRecursivo -name "$ocultos" $tipoArch)
+
+# Búsqueda de correos electrónicos.
+# ---------------------------------
+# Se cambia el valor de la variable IFS para que tome el enter como separador para poder evaluar cada archivo obtenido anteriormente.
+IFS="
+"
+
+# Se realiza la búsqueda preguntando primero si debe ser para un dominio determinado.
+# Sino se realiza la búsqueda para todos los dominios y en caso de ocurrir un error se depliegs un mensaje de error y se devuelve código de retorno 6. 
+# Los correos electrónicos encontrados se guardan en la variable correos.
+if  [ $buscarPorDominio = "si" ]
+then
+        correos=$(egrep -o -h -a "[a-zA-Z0-9_.]*[a-zA-Z0-9]+@"$dominio" ?" $archivosDondeBuscar)
+else
+        if [ $buscarPorDominio = "no" ]
+        then
+                correos=$(egrep -o -h -a "[a-zA-Z0-9_.]*[a-zA-Z0-9]+@[a-zA-Z0-9]+[a-zA-Z0-9]+[_.a-zA-Z0-9]*[a-zA-Z0-9]+ ?" $archivosDondeBuscar)
+        else
+                echo Ha ocurrido un error inesperado y el programa va a terminar >&2
+                exit 6
+        fi
+fi
+
+echo
+
+# DESPLIEGUE DE RESULTADOS POR PANTALLA
+# -------------------------------------
+
+# Se verifica que la variable $correos contiene algún valor.
+# En caso que esté vacía significa que no se encontraron correos elctrónicos en el directorio, en cuyo caso se despliega el mensaje correspondiente.
+# Si la variable $correos contiene correos electrónicos, se cambia la variable IFS para que el separador sea el espacio y se muestre un correo por línea.
+# Se despliega la lista de correos.
+# Seguidamente se cuenta la cantidad de líneas desplegadas y se despliega por pantalla con el mensaje correspondiente.
+
+if test -z "$correos"
+then
+        echo
+        echo No se han encontrado correos en el directorio "$directorio"
+        echo
+else
+        IFS=" "
+        echo "Listado de correos electónicos en el directorio $directorio es:"
+        echo
+        echo "$correos"
+        echo
+        cantidadCorreos=$(echo "$correos" | wc -l)
+        echo Canidad de correos electrónicos encontrados en el directorio "$directorio" es: $cantidadCorreos
+        echo
+fi
+
+# FIN DEL SCRIPT
+# --------------
+
+
+
+
+
+
 
 
 
